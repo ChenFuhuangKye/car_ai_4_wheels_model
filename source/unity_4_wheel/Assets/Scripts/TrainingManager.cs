@@ -35,7 +35,9 @@ public class TrainingManager : MonoBehaviour
 
     public Robot robot;
     
-
+    [SerializeField]
+    GameObject anchor1, anchor2, anchor3, anchor4;
+    Vector3[] outerPolygonVertices;
 
     [SerializeField]
     GameObject target;
@@ -120,7 +122,7 @@ public class TrainingManager : MonoBehaviour
         MoveGameObject(target, newTarget);
 
         State state = updateState(newTarget, curver);
-        
+        Debug.Log("start");
         Send(state);
 
     }
@@ -148,31 +150,40 @@ public class TrainingManager : MonoBehaviour
 
     void change_target()
     {
-        target_x = Random.Range(-3.0f, 3.0f);//broken TODO
-            
-        if (target_x <= 1 && target_x >= -1) {
-            if (target_x > 0) {
-                target_x += 1;
-            } else {
-                target_x -= 1;
-            }
-        }
-
-        float target_y = Random.Range(-3.0f, 3.0f);
-        if (target_y <= 1 && target_y >= -1) {
-            if (target_y > 0) {
-                target_y += 1;
-            } else {
-                target_y -= 1;
-            }   
-        }
-        
-
         carPos = baselink.GetComponent<ArticulationBody>().transform.position;
-        newTarget = new Vector3(carPos[0]+target_x, 0, carPos[2]+target_y);
-        Debug.Log("newTarget: "+newTarget);
+        outerPolygonVertices = new Vector3[]{
+            anchor1.transform.position,
+            anchor2.transform.position,
+            anchor3.transform.position,
+            anchor4.transform.position
+        };
+        newTarget = new Vector3(carPos[0]-20, 0, carPos[2]-20);
+
+        while (!IsPointInsidePolygon(newTarget, outerPolygonVertices)){
+            target_x = Random.Range(-3.0f, 3.0f);
+
+            if (target_x <= 1 && target_x >= -1) {
+                if (target_x > 0) {
+                    target_x += 1;
+                } else {
+                    target_x -= 1;
+                }
+            }
+
+            float target_y = Random.Range(-3.0f, 3.0f);
+            if (target_y <= 1 && target_y >= -1) {
+                if (target_y > 0) {
+                    target_y += 1;
+                } else {
+                    target_y -= 1;
+                }
+            }
+            newTarget = new Vector3(carPos[0]+target_x, 0, carPos[2]+target_y);
+
+        }
+        // Debug.Log("newTarget: "+newTarget);
         MoveGameObject(target, newTarget);
-            
+
         State state = updateState(newTarget, curver);
         Debug.Log("ROS2TargetPosition: "+state.ROS2TargetPosition);
         Send(state);
@@ -197,6 +208,10 @@ public class TrainingManager : MonoBehaviour
                 action.voltage.Add((float)data[1]);
                 
                 action.voltage.Add((float)data[2]);
+
+                action.voltage.Add((float)data[3]);
+
+                action.voltage.Add((float)data[4]);
 
                 robot.DoAction(action);
                 StartStep();
@@ -317,57 +332,64 @@ public class TrainingManager : MonoBehaviour
 
     void Send(object data)
     {   
-        List<float> send_to_python = new List<float>();
+        // List<float> send_to_python = new List<float>();
         var properties = typeof(State).GetProperties();
-        foreach (var property in properties)
-        {
-            if (property.PropertyType == typeof(Vector3) || property.PropertyType == typeof(Quaternion) || property.PropertyType == typeof(float))
-            {
-                var value = property.GetValue(data);
+        // foreach (var property in properties)
+        // {
+        //     if (property.PropertyType == typeof(Vector3) || property.PropertyType == typeof(Quaternion) || property.PropertyType == typeof(float))
+        //     {
+        //         var value = property.GetValue(data);
 
-                if (property.PropertyType == typeof(Vector3))
-                {
-                    var vector3Value = (Vector3)value;
-                    send_to_python.Add(vector3Value.x);
-                    send_to_python.Add(vector3Value.y);
-                    send_to_python.Add(vector3Value.z);
-                }
-                // 如果值是 Quaternion，将其分解为 x、y、z、w
-                else if (property.PropertyType == typeof(Quaternion))
-                {
-                    var quaternionValue = (Quaternion)value;
-                    send_to_python.Add(quaternionValue.x);
-                    send_to_python.Add(quaternionValue.y);
-                    send_to_python.Add(quaternionValue.z);
-                    send_to_python.Add(quaternionValue.w);
-                }
-                // 如果值是 float，直接添加到列表中
-                else if (property.PropertyType == typeof(float))
-                {
-                    send_to_python.Add((float)value);
-                }
-            }
-        }
+        //         if (property.PropertyType == typeof(Vector3))
+        //         {
+        //             var vector3Value = (Vector3)value;
+        //             send_to_python.Add(vector3Value.x);
+        //             send_to_python.Add(vector3Value.y);
+        //             send_to_python.Add(vector3Value.z);
+        //         }
+        //         // 如果值是 Quaternion，将其分解为 x、y、z、w
+        //         else if (property.PropertyType == typeof(Quaternion))
+        //         {
+        //             var quaternionValue = (Quaternion)value;
+        //             send_to_python.Add(quaternionValue.x);
+        //             send_to_python.Add(quaternionValue.y);
+        //             send_to_python.Add(quaternionValue.z);
+        //             send_to_python.Add(quaternionValue.w);
+        //         }
+        //         // 如果值是 float，直接添加到列表中
+        //         else if (property.PropertyType == typeof(float))
+        //         {
+        //             send_to_python.Add((float)value);
+        //         }
+        //     }
+        // }
         // Debug.Log("publish to ros topic name : " + topicName);
+        Dictionary<string, object> stateDict = new Dictionary<string, object>();
+
+        foreach (var property in properties){
+            string propertyName = property.Name;
+            var value = property.GetValue(data);
+            stateDict[propertyName] = value;
+        }
+
+        string dictData = MiniJSON.Json.Serialize(stateDict);
+
+
         Dictionary<string, object> message = new Dictionary<string, object>
         {
             { "op", "publish" },
             { "id", "1" },
             { "topic", topicName },
             { "msg", new Dictionary<string, object>
-                {
-                    { "layout", new Dictionary<string, object>
-                        {
-                            { "dim", new object[] { } },
-                            { "data_offset", 0 }
-                        }
-                    },
-                    { "data", send_to_python.ToArray() }
+                {                
+                   { "data", dictData}                
                 }
            }
         };
+
         string jsonMessage = MiniJSON.Json.Serialize(message);
         try{
+            Debug.Log("jsonMessage");
             socket.Send(jsonMessage);
             // Debug.Log("Send messages");
             // Debug.Log("send message to ROS Bridge: " + jsonMessage);
@@ -469,6 +491,22 @@ public class TrainingManager : MonoBehaviour
         socket.Send(subscribeMessage);
     }
 
+    bool IsPointInsidePolygon(Vector3 point, Vector3[] polygonVertices)
+    {
+        Debug.Log("IsPointInsidePolygon called"+point);
+        int polygonSides = polygonVertices.Length;
+        bool isInside = false;
 
+        for (int i = 0, j = polygonSides - 1; i < polygonSides; j = i++)
+        {
+            if (((polygonVertices[i].z <= point.z && point.z < polygonVertices[j].z) ||
+                (polygonVertices[j].z <= point.z && point.z < polygonVertices[i].z)) &&
+                (point.x < (polygonVertices[j].x - polygonVertices[i].x) * (point.z - polygonVertices[i].z) / (polygonVertices[j].z - polygonVertices[i].z) + polygonVertices[i].x))
+            {
+                isInside = !isInside;
+            }
+        }
+        return isInside;
+    }
 
 }

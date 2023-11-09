@@ -83,10 +83,10 @@ public class Robot : MonoBehaviour
         Vector3 angVBL = wheelM[0].AngularV;
 
 
-        float range = lidar.GetMinRange();
+        List<float> range = lidar.GetRange();
         // Debug.Log("min range: " + range);
 
-        Vector3 rangeDirection = lidar.GetMinRangeDirection();
+        var rangeDirection = lidar.GetRangeDirection();
 
         State ROS2State = new State(){
 
@@ -107,9 +107,9 @@ public class Robot : MonoBehaviour
             ROS2WheelAngularVelocityRightBack = ToRosVec(angVBR),
             ROS2WheelAngularVelocityLeftBack = ToRosVec(angVBL),
 
-            ROS2MinRange = range,
+            ROS2Range = range.ToArray(),
             // ROS2MinRangeDirection = ToRosVec(rangeDirection),
-            ROS2MinRangePosition = ToRosVec(rangeDirection),
+            ROS2RangePosition = rangeDirection.ToArray(),
             
 
         };
@@ -143,8 +143,8 @@ public class Robot : MonoBehaviour
         motorListMF[1].SetVoltage((float)action.voltage[1]);
 
         ////rear engine
-        motorListMF[2].SetVoltage((float)action.voltage[0]);
-        motorListMF[3].SetVoltage((float)action.voltage[1]);
+        motorListMF[2].SetVoltage((float)action.voltage[2]);
+        motorListMF[3].SetVoltage((float)action.voltage[3]);
     }
 
     public float getTargetAngle(Vector2 pos, Vector2 targetPos)
