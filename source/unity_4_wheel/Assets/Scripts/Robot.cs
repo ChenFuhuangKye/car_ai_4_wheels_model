@@ -42,7 +42,7 @@ public class Robot : MonoBehaviour
     {   
         // Unity.Robotics.UrdfImporter.Control.Controller controller = GetComponent<Unity.Robotics.UrdfImporter.Control.Controller>(); /////
         baseLinkM = Util.GetOrAddComponent<MotionSensor>(transform, "base_link");
-
+        
         
         wheelM = new List<MotionSensor>() {            
             Util.GetOrAddComponent<MotionSensor>(transform, "front_right"),

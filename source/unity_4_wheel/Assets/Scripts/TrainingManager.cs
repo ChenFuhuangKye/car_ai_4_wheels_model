@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -66,7 +67,7 @@ public class TrainingManager : MonoBehaviour
     public float stepTime = 0.05f; //0.1f
     public float currentStepTime = 0.0f;
 
-    Vector3 newTarget;
+    Vector3 newTarget = new Vector3(1, 0, 1);
 
 
     public BezierCurve curver;
@@ -103,6 +104,8 @@ public class TrainingManager : MonoBehaviour
 
     Transform baselink;
     Vector3 carPos;
+    Vector3 prev_carPos;
+    private int count_stuck;
 
     void Start()
     {   
@@ -125,29 +128,61 @@ public class TrainingManager : MonoBehaviour
         Debug.Log("start");
         Send(state);
 
+        count_stuck = 0;
     }
 
     float target_x;
     float target_y;
     
-    
+    private float delayTimer = 1.0f; // Set the delay time in seconds
+    private float elapsedTime = 0.0f; // Time elapsed since the last action
+
     float target_change_flag = 0;
     
     void Update()
-    {  
-
+    {                  
         if(target_change_flag == 1){
-
+            count_stuck  = 0 ;
             change_target();
             target_change_flag = 0;
-        }   
-        
-                
-                          
-    }
-        
-    
+        }           
+                       
+        if (count_stuck > 10)
+        {
+            count_stuck  = 0 ;
 
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+
+        // Update the elapsed time
+        elapsedTime += Time.deltaTime;         
+        // Check if enough time has passed
+        if (elapsedTime >= delayTimer)
+        {
+            // Perform the action
+            Debug.Log("Action performed!");
+            check_stuck();
+
+            // Reset the timer
+            elapsedTime = 0.0f;
+        }
+    }
+    
+    void check_stuck()
+    {
+        Debug.Log(count_stuck);
+        // carPos = baselink.transform.position;        ;
+        carPos = baselink.transform.position;    
+        // Get the Z rotation of the baselink
+        float zRotation = baselink.transform.rotation.eulerAngles.z;
+        
+        if (carPos == prev_carPos || zRotation > 90.0f || zRotation < -90.0f) 
+        {            
+            count_stuck += 1;
+        }
+        prev_carPos = carPos;                
+    }
+    
     void change_target()
     {
         carPos = baselink.GetComponent<ArticulationBody>().transform.position;
@@ -388,8 +423,7 @@ public class TrainingManager : MonoBehaviour
         };
 
         string jsonMessage = MiniJSON.Json.Serialize(message);
-        try{
-            Debug.Log("jsonMessage");
+        try{            
             socket.Send(jsonMessage);
             // Debug.Log("Send messages");
             // Debug.Log("send message to ROS Bridge: " + jsonMessage);
