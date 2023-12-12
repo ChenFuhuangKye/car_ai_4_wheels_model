@@ -68,6 +68,10 @@ public class TrainingManager : MonoBehaviour
     public float currentStepTime = 0.0f;
 
     Vector3 newTarget = new Vector3(1, 0, 1);
+    Vector3 newTarget_car;   
+
+    float target_x_car;
+    float target_y_car;
 
 
     public BezierCurve curver;
@@ -134,8 +138,7 @@ public class TrainingManager : MonoBehaviour
     float target_x;
     float target_y;
     
-    private float delayTimer = 1.0f; // Set the delay time in seconds
-    private float elapsedTime = 0.0f; // Time elapsed since the last action
+   
 
     float target_change_flag = 0;
     
@@ -147,72 +150,49 @@ public class TrainingManager : MonoBehaviour
             target_change_flag = 0;
         }           
                        
-        if (count_stuck > 10)
-        {
-            count_stuck  = 0 ;
-
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-        }
-
-        // Update the elapsed time
-        elapsedTime += Time.deltaTime;         
-        // Check if enough time has passed
-        if (elapsedTime >= delayTimer)
-        {
-            // Perform the action
-            Debug.Log("Action performed!");
-            check_stuck();
-
-            // Reset the timer
-            elapsedTime = 0.0f;
-        }
     }
     
-    void check_stuck()
-    {
-        Debug.Log(count_stuck);
-        // carPos = baselink.transform.position;        ;
-        carPos = baselink.transform.position;    
-        // Get the Z rotation of the baselink
-        float zRotation = baselink.transform.rotation.eulerAngles.z;
-        
-        if (carPos == prev_carPos || zRotation > 90.0f || zRotation < -90.0f) 
-        {            
-            count_stuck += 1;
-        }
-        prev_carPos = carPos;                
-    }
     
     void change_target()
     {
-        carPos = baselink.GetComponent<ArticulationBody>().transform.position;
-        outerPolygonVertices = new Vector3[]{
-            anchor1.transform.position,
-            anchor2.transform.position,
-            anchor3.transform.position,
-            anchor4.transform.position
-        };
-        newTarget = new Vector3(carPos[0]-20, 0, carPos[2]-20);
+		carPos = baselink.GetComponent<ArticulationBody>().transform.position;
+		outerPolygonVertices = new Vector3[]{
+		anchor1.transform.position,
+		anchor2.transform.position,
+		anchor3.transform.position,
+		anchor4.transform.position
+		};
+		// -------------------------------------
+		target_x_car = Random.Range(-3.0f, 3.0f);
+		target_x_car = abs_biggerthan1(target_x_car);    
+		target_y_car = Random.Range(-3.0f, 3.0f);
+        target_y_car = abs_biggerthan1(target_y_car);
 
+        newTarget_car = new Vector3(carPos[0] + target_x_car, carPos[1], carPos[2] + target_y_car);
+        while (!IsPointInsidePolygon(newTarget_car, outerPolygonVertices))
+        {
+            target_x_car = Random.Range(-3.0f, 3.0f);
+            target_x_car = abs_biggerthan1(target_x_car);
+            target_y_car = Random.Range(-3.0f, 3.0f);
+            target_y_car = abs_biggerthan1(target_y_car);
+            newTarget_car = new Vector3(carPos[0] + target_x_car, 0, carPos[2] + target_y_car);
+        }
+        // MoveGameObject(robot.GameObject, newTarget_car); // check
+        MoveRobot(newTarget_car);
+        // ------------------------------------------
+
+
+        target_x = Random.Range(-3.0f, 3.0f);
+        target_x = abs_biggerthan1(target_x);
+
+        target_y = Random.Range(-3.0f, 3.0f);
+        target_y = abs_biggerthan1(target_y);
+        newTarget = new Vector3(newTarget_car[0] + target_x, 0, newTarget_car[2] + target_y);
         while (!IsPointInsidePolygon(newTarget, outerPolygonVertices)){
             target_x = Random.Range(-3.0f, 3.0f);
-
-            if (target_x <= 1 && target_x >= -1) {
-                if (target_x > 0) {
-                    target_x += 1;
-                } else {
-                    target_x -= 1;
-                }
-            }
-
-            float target_y = Random.Range(-3.0f, 3.0f);
-            if (target_y <= 1 && target_y >= -1) {
-                if (target_y > 0) {
-                    target_y += 1;
-                } else {
-                    target_y -= 1;
-                }
-            }
+            target_x = abs_biggerthan1(target_x);
+            target_y = Random.Range(-3.0f, 3.0f);
+            target_y = abs_biggerthan1(target_y);
             newTarget = new Vector3(carPos[0]+target_x, 0, carPos[2]+target_y);
 
         }
@@ -220,10 +200,28 @@ public class TrainingManager : MonoBehaviour
         MoveGameObject(target, newTarget);
 
         State state = updateState(newTarget, curver);
+        Debug.Log("carPosition: "+state.carPosition);
         Debug.Log("ROS2TargetPosition: "+state.ROS2TargetPosition);
+
         Send(state);
-        
+
     }
+    private float abs_biggerthan1(float random)
+    {
+        if (random <= 1 && random >= -1) 
+        {
+            if (random > 0) 
+            {
+                random += 1;
+            } 
+            else 
+            {
+                random -= 1;
+            }
+        }
+        return random;
+    }
+
 
     private void OnWebSocketMessage(object sender, MessageEventArgs e)
     {

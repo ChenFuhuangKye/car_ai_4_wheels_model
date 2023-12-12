@@ -16,6 +16,7 @@ public class State
     // public Vector3 targetPosition { get; set; }
     // public Vector3 pathPositionClosest { get; set; }
     public Vector3 carPosition { get; set; }
+    public float objectUpVector { get; set; }
     // public Vector3 carVelocity { get; set; }
     // public Vector3 carAugularVelocity { get; set; }
     // public Quaternion carQuaternion { get; set; }
